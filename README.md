@@ -1,5 +1,7 @@
 # pi-notify-agent
 
+![pi-notify-agent preview](./assets/preview.png)
+
 Cross-platform desktop notifications + sound alerts for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
 When a pi run takes longer than a configurable threshold, this package notifies you when the agent:
@@ -28,7 +30,7 @@ pi install ./pi-notify-agent
 ### From GitHub
 
 ```bash
-pi install https://github.com/<your-user>/pi-notify-agent
+pi install https://github.com/AlyusLabs/pi-notify-agent
 ```
 
 ### From npm
@@ -124,14 +126,14 @@ git commit -m "feat: initial pi notification package"
 ### 2. Push to GitHub
 
 ```bash
-git remote add origin https://github.com/<your-user>/pi-notify-agent.git
+git remote add origin https://github.com/AlyusLabs/pi-notify-agent.git
 git push -u origin main
 ```
 
 Users can then install with:
 
 ```bash
-pi install https://github.com/<your-user>/pi-notify-agent
+pi install https://github.com/AlyusLabs/pi-notify-agent
 ```
 
 ### 3. Publish to npm
