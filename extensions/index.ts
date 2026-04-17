@@ -15,6 +15,7 @@ const LINUX_SOUND_FILES = [
 
 type AgentOutcome = "success" | "error" | "aborted" | "other";
 type NotifyKind = "success" | "error";
+type SoundPlayback = "external" | "terminal-bell";
 
 const commandExistsCache = new Map<string, boolean>();
 
@@ -143,31 +144,36 @@ function playTerminalBell(): void {
 	process.stdout.write("\x07");
 }
 
-function playSound(): void {
+function requestTerminalAttention(): void {
+	playTerminalBell();
+}
+
+function playSound(): SoundPlayback {
 	if (canUseWindowsToast() && commandExists("rundll32.exe")) {
 		runDetached("rundll32.exe", ["user32.dll,MessageBeep"]);
-		return;
+		return "external";
 	}
 
 	if (isMac() && commandExists("osascript")) {
 		runDetached("osascript", ["-e", "beep"]);
-		return;
+		return "external";
 	}
 
 	if (isLinux()) {
 		if (commandExists("canberra-gtk-play")) {
 			runDetached("canberra-gtk-play", ["-i", "complete"]);
-			return;
+			return "external";
 		}
 
 		const soundFile = LINUX_SOUND_FILES.find((file) => existsSync(file));
 		if (soundFile && commandExists("paplay")) {
 			runDetached("paplay", [soundFile]);
-			return;
+			return "external";
 		}
 	}
 
 	playTerminalBell();
+	return "terminal-bell";
 }
 
 function isAssistantMessage(message: AgentMessage): message is AssistantMessage {
@@ -239,6 +245,7 @@ function notifyOutcome(
 	durationMs: number,
 	kind: NotifyKind,
 	soundEnabled: boolean,
+	attentionEnabled: boolean,
 	reason?: string,
 	messagePreview?: string,
 ): void {
@@ -254,8 +261,9 @@ function notifyOutcome(
 		sendTerminalNotification(title, body);
 	}
 
-	if (soundEnabled) {
-		playSound();
+	const soundPlayback = soundEnabled ? playSound() : undefined;
+	if (attentionEnabled && soundPlayback !== "terminal-bell") {
+		requestTerminalAttention();
 	}
 }
 
@@ -277,6 +285,11 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 	});
 	pi.registerFlag("notify-sound", {
 		description: "Play a sound together with notifications: on/off",
+		type: "string",
+		default: "on",
+	});
+	pi.registerFlag("notify-attention", {
+		description: "Emit BEL so supporting terminals can flash taskbar, tab, dock, or urgency state: on/off",
 		type: "string",
 		default: "on",
 	});
@@ -315,6 +328,7 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 		const notifySuccess = parseBoolean(pi.getFlag("notify-success"), true);
 		const notifyError = parseBoolean(pi.getFlag("notify-error"), true);
 		const soundEnabled = parseBoolean(pi.getFlag("notify-sound"), true);
+		const attentionEnabled = parseBoolean(pi.getFlag("notify-attention"), true);
 
 		const lastAssistant = lastAssistantThisRun ?? getLastAssistantMessage(event.messages);
 		const preview = firstLine(lastAssistant ? getTextContent(lastAssistant) : undefined);
@@ -323,12 +337,12 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 		if (outcome === "aborted") return;
 		if (outcome === "success") {
 			if (!notifySuccess) return;
-			notifyOutcome(pi, ctx, durationMs, "success", soundEnabled, undefined, preview);
+			notifyOutcome(pi, ctx, durationMs, "success", soundEnabled, attentionEnabled, undefined, preview);
 			return;
 		}
 
 		if (!notifyError) return;
-		notifyOutcome(pi, ctx, durationMs, "error", soundEnabled, reason, preview);
+		notifyOutcome(pi, ctx, durationMs, "error", soundEnabled, attentionEnabled, reason, preview);
 	});
 
 	pi.registerCommand("notify-test", {
@@ -337,7 +351,17 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 			const mode = args.trim().toLowerCase();
 			const kind: NotifyKind = mode === "error" ? "error" : "success";
 			const soundEnabled = parseBoolean(pi.getFlag("notify-sound"), true);
-			notifyOutcome(pi, ctx, 4200, kind, soundEnabled, kind === "error" ? "manual test" : undefined, "manual test");
+			const attentionEnabled = parseBoolean(pi.getFlag("notify-attention"), true);
+			notifyOutcome(
+				pi,
+				ctx,
+				4200,
+				kind,
+				soundEnabled,
+				attentionEnabled,
+				kind === "error" ? "manual test" : undefined,
+				"manual test",
+			);
 			ctx.ui.notify(`notify-test: ${kind}`, kind === "error" ? "warning" : "info");
 		},
 	});
@@ -349,11 +373,14 @@ export default function notifyExtension(pi: ExtensionAPI): void {
 			const success = parseBoolean(pi.getFlag("notify-success"), true);
 			const error = parseBoolean(pi.getFlag("notify-error"), true);
 			const sound = parseBoolean(pi.getFlag("notify-sound"), true);
+			const attention = parseBoolean(pi.getFlag("notify-attention"), true);
 			const lines = [
 				`notify-min-ms: ${minMs}`,
 				`notify-success: ${success ? "on" : "off"}`,
 				`notify-error: ${error ? "on" : "off"}`,
 				`notify-sound: ${sound ? "on" : "off"}`,
+				`notify-attention: ${attention ? "on" : "off"}`,
+				"hint: attention uses BEL, so supporting terminals can flash taskbar/dock/tab.",
 			];
 			ctx.ui.notify(lines.join("\n"), "info");
 		},

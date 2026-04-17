@@ -15,6 +15,7 @@ When a pi run takes longer than a configurable threshold, this package notifies 
 - **macOS:** native notification via `osascript` + system beep
 - **Linux:** `notify-send` + sound fallback (`canberra-gtk-play` / `paplay` when available)
 - **Terminal fallback:** Kitty `OSC 99`, otherwise `OSC 777`, plus terminal bell when needed
+- **Attention mode:** emits `BEL` so supporting terminals can flash taskbar, tab, dock, or urgency state
 - **Noise reduction:** default threshold is **3000ms**
 - **pi commands:** `/notify-test`, `/notify-test error`, `/notify-status`
 - **CLI flags:** configure threshold and on/off behavior without editing code
@@ -61,6 +62,7 @@ By default the package:
 - sends notifications for **success**
 - sends notifications for **error**
 - plays **sound** together with the notification
+- emits **BEL attention** together with the notification
 - ignores **aborted** runs
 
 ## CLI flags
@@ -71,6 +73,7 @@ The extension registers these pi flags:
 - `--notify-success <on|off>`
 - `--notify-error <on|off>`
 - `--notify-sound <on|off>`
+- `--notify-attention <on|off>`
 
 ### Examples
 
@@ -83,6 +86,9 @@ pi --notify-success off
 
 # Keep desktop notifications but disable sound
 pi --notify-sound off
+
+# Keep notifications but disable terminal attention bell
+pi --notify-attention off
 
 # Only notify on errors
 pi --notify-success off --notify-error on
@@ -151,11 +157,28 @@ Then users can install with:
 pi install npm:pi-notify-agent
 ```
 
+## Taskbar flash / dock bounce / attention
+
+The new `notify-attention` mode uses the terminal bell (`BEL`, `\a`). That is the most cross-platform way to request attention from a terminal window.
+
+Whether this becomes a flashing taskbar icon, a bouncing dock icon, a tab badge, or just a beep depends on the terminal emulator settings.
+
+Common setups:
+
+- **Windows Terminal:** configure `bellStyle` to include `window` and/or `taskbar`
+- **kitty:** enable `window_alert_on_bell yes` (and on macOS optionally `macos_dock_badge_on_bell yes`)
+- **xterm:** enable urgent-on-bell behavior (`bellIsUrgent`)
+- **rxvt-unicode / urxvt:** enable `urgentOnBell`
+- **iTerm2:** enable bell/dock-bounce style behavior in profile settings or triggers
+
+This is more portable than trying to directly manipulate the OS taskbar/dock from the extension.
+
 ## Notes
 
 - Linux desktop notifications require a GUI session and usually `notify-send`.
 - Linux sound playback depends on what is installed on the machine.
 - On headless / SSH-only environments the package falls back to terminal notifications / bell.
+- Attention behavior is terminal-dependent; `BEL` is the portable trigger, but the visual effect depends on terminal config.
 - If you want different sounds for success vs error, add that in `extensions/index.ts`.
 
 ## License
