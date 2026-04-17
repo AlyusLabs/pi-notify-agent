@@ -1,0 +1,32 @@
+{
+  "name": "pi-notify-agent",
+  "version": "0.1.0",
+  "description": "Cross-platform desktop notifications and sounds for pi-coding-agent",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "notifications",
+    "desktop-notifications",
+    "coding-agent"
+  ],
+  "files": [
+    "extensions",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
